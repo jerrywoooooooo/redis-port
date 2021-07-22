@@ -463,7 +463,14 @@ func redigoGetResponse(c redigo.Conn) {
 	}
 }
 
-func genRestoreCommands(e *rdb.DBEntry, db uint64, on func(cmd string, args ...interface{})) {
+func genRestoreCommands(e *rdb.DBEntry, db uint64, keyPrefix []string, on func(cmd string, args ...interface{})) {
+
+	//过滤非前缀的key
+	if strHasPrefix(e.Key.String(), keyPrefix) != true {
+		log.Debug(e.Key.String() + " has no prefix: ignore it")
+		return
+	}
+
 	if db != e.DB {
 		on("SELECT", e.DB)
 	}
@@ -540,7 +547,7 @@ func genRestoreCommands(e *rdb.DBEntry, db uint64, on func(cmd string, args ...i
 	}
 }
 
-func doRestoreDBEntry(entryChan <-chan *rdb.DBEntry, addr, auth string, on func(e *rdb.DBEntry) bool) {
+func doRestoreDBEntry(entryChan <-chan *rdb.DBEntry, addr, auth string, keyPrefix []string, on func(e *rdb.DBEntry) bool) {
 	var ticker = time.NewTicker(time.Millisecond * 250)
 	defer ticker.Stop()
 
@@ -561,7 +568,7 @@ func doRestoreDBEntry(entryChan <-chan *rdb.DBEntry, addr, auth string, on func(
 		var db uint64
 		for e := range entryChan {
 			if on(e) {
-				genRestoreCommands(e, db, func(cmd string, args ...interface{}) {
+				genRestoreCommands(e, db, keyPrefix, func(cmd string, args ...interface{}) {
 					redigoSendCommand(c, cmd, args...)
 					redigoFlushConnIf(c, func() bool {
 						switch {
@@ -590,7 +597,7 @@ func doRestoreDBEntry(entryChan <-chan *rdb.DBEntry, addr, auth string, on func(
 	}).RunAndWait()
 }
 
-func doRestoreAoflog(reader *bufio2.Reader, addr, auth string, on func(db uint64, cmd string) bool) {
+func doRestoreAoflog(reader *bufio2.Reader, addr, auth string, keyPrefix []string, on func(db uint64, cmd string) bool) {
 	var ticker = time.NewTicker(time.Millisecond * 100)
 	defer ticker.Stop()
 
@@ -615,6 +622,15 @@ func doRestoreAoflog(reader *bufio2.Reader, addr, auth string, on func(db uint64
 			redisFlushEncoder(encoder)
 			log.PanicErrorf(err, "decode command failed")
 		}
+
+		//如果前缀不为空，则判断是否为这个前缀
+		if len(r.Array) > 1 {
+			var key = string(r.Array[1].Value)
+			if strHasPrefix(key, keyPrefix) != true {
+				continue
+			}
+		}
+
 		if r.Type != redis.TypeArray || len(r.Array) == 0 {
 			log.Panicf("invalid command %+v", r)
 		}
@@ -634,4 +650,22 @@ func doRestoreAoflog(reader *bufio2.Reader, addr, auth string, on func(db uint64
 		}
 		redisSendCommand(encoder, r, tick.Swap(0) != 0)
 	}
+}
+
+// 判断是否包含前缀
+func strHasPrefix(key string, keyPrefix []string) bool {
+
+	if len(keyPrefix) < 1 {
+		return true
+	}
+
+	var hasPrefix bool
+	hasPrefix = false
+	for i := 0; i < len(keyPrefix); i++ {
+		if strings.HasPrefix(key, keyPrefix[i]) {
+			hasPrefix = true
+			break
+		}
+	}
+	return hasPrefix
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/CodisLabs/codis/pkg/utils/assert"
+	"github.com/CodisLabs/codis/pkg/utils/log"
 )
 
 func parseFlagsFromString(line string) *Flags {
@@ -72,4 +73,13 @@ func TestParseFlagsUnixtime(t *testing.T) {
 	testcase("--unixtime-in-milliseconds=@0", now, time.Second)
 	testcase("--unixtime-in-milliseconds=+1000ms", time.Second, 0)
 	testcase("--unixtime-in-milliseconds=-1000ms", -time.Second, 0)
+}
+
+func TestParseFlagsKeyPrefix(t *testing.T) {
+	var testcase = func(line string) {
+		var flags = parseFlagsFromString(line)
+		assert.Must(len(flags.keyPrefix) > 0)
+		log.Info(flags.keyPrefix)
+	}
+	testcase("--key-prefix=TU:DEVICE:TUID,TEST:1/123")
 }

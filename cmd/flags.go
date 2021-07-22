@@ -24,6 +24,9 @@ type Flags struct {
 
 	Parallel int
 
+	// 指定key
+	keyPrefix []string
+
 	AofPath string
 	TmpFile struct {
 		Path string
@@ -141,5 +144,18 @@ func parseFlagsFromArgs(usage string, args []string) *Flags {
 	} else if flags.TmpFile.Path != "" {
 		flags.TmpFile.Size = bytesize.GB * 2
 	}
+
+	// 解析选定key
+	for _, key := range []string{"--key-prefix"} {
+		var prefix string
+		if s, ok := d[key].(string); ok && s != "" {
+			prefix = s
+		}
+
+		//通过,分隔
+		flags.keyPrefix = strings.Split(prefix, ",")
+	}
+
 	return &flags
 }
+

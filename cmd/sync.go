@@ -30,6 +30,8 @@ Options:
 	--db=DB                           Accept db = DB, default is *.
 	--tmpfile=FILE                    Use FILE to as socket buffer.
 	--tmpfile-size=SIZE               Set FILE size. If no --tmpfile is provided, a temporary file under current folder will be created.
+  	--key-prefix=str            	  filter source key use prefix, separate with, .
+
 
 Examples:
 	$ redis-sync -m 127.0.0.1:6379 -t 127.0.0.1:6380
@@ -184,7 +186,7 @@ Examples:
 	var entryChan = newRDBLoader(io.LimitReader(reader, rdbSize), 32)
 
 	var jobs = NewParallelJob(flags.Parallel, func() {
-		doRestoreDBEntry(entryChan, target.Addr, target.Auth,
+		doRestoreDBEntry(entryChan, target.Addr, target.Auth, flags.keyPrefix,
 			func(e *rdb.DBEntry) bool {
 				if !acceptDB(e.DB) {
 					master.rdb.skip.Incr()
@@ -194,7 +196,7 @@ Examples:
 				return true
 			})
 	}).Then(func() {
-		doRestoreAoflog(reader, target.Addr, target.Auth,
+		doRestoreAoflog(reader, target.Addr, target.Auth, flags.keyPrefix,
 			func(db uint64, cmd string) bool {
 				if !acceptDB(db) && cmd != "PING" {
 					master.aof.skip.Incr()

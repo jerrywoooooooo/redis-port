@@ -27,6 +27,8 @@ Options:
 	-a FILE, --aof=FILE               Also restore the replication backlog.
 	--db=DB                           Accept db = DB, default is *.
 	--unixtime-in-milliseconds=EXPR   Update expire time when restoring objects from RDB.
+  	--key-prefix=str            	  filter source key use prefix, separate with, .
+
 
 Examples:
 	$ redis-restore    dump.rdb -t 127.0.0.1:6379
@@ -95,7 +97,7 @@ Examples:
 		}
 		var entryChan = newRDBLoader(input.rd, 32)
 		NewParallelJob(flags.Parallel, func() {
-			doRestoreDBEntry(entryChan, target.Addr, target.Auth,
+			doRestoreDBEntry(entryChan, target.Addr, target.Auth, flags.keyPrefix,
 				func(e *rdb.DBEntry) bool {
 					if e.Expire != rdb.NoExpire {
 						e.Expire += flags.ExpireOffset
@@ -112,7 +114,7 @@ Examples:
 		if aoflog.Path == "" {
 			return
 		}
-		doRestoreAoflog(aoflog.rd, target.Addr, target.Auth,
+		doRestoreAoflog(aoflog.rd, target.Addr, target.Auth, flags.keyPrefix,
 			func(db uint64, cmd string) bool {
 				if !acceptDB(db) && cmd != "PING" {
 					aoflog.skip.Incr()
