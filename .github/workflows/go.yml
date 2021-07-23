@@ -6,31 +6,36 @@ on:
   pull_request:
     branches: [ redis-4.x-cgo ]
 
-jobs:
+language: go
 
-  build:
-    runs-on: ubuntu-latest
-    container: docker.io/centos:7
-    steps:
-    - uses: actions/checkout@v2
-  
-    - name: Set up Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.16.0
-        
-    - name: checkout jemalloc
-      run: git clone https://github.com/jemalloc/jemalloc.git && cd jemalloc && git checkout 04380e79f1e2428bd0ad000bbc6e3d2dfc6b66a5 && cd ../
-      
-    - name: checkout redis
-      run: git clone https://github.com/redis/redis.git && cd redis &&  git checout 238c9bd0863e713f018587e79f452ade845bee91 && cd ../
-  
-        
-    - name : init
-      run: go mod init
-    - name: Build
-      run: go build -mod=mod -v ./...
-      #run: make
+os:
+    - linux
+    - osx
 
-    - name: Test
-      run: go test -v ./...
+go:
+    - 1.10.x
+    - 1.9.x
+    - 1.8.x
+
+script:
+    - make
+    - make gotest
+
+before_deploy:
+    - export   DEPLOY_TARGET=redis-port-${TRAVIS_TAG}-go${TRAVIS_GO_VERSION}-${TRAVIS_OS_NAME}
+    - mv bin ${DEPLOY_TARGET}
+    - zip -r ${DEPLOY_TARGET}.zip ${DEPLOY_TARGET} && tar -czvf ${DEPLOY_TARGET}.tar.gz ${DEPLOY_TARGET}
+
+deploy:
+    provider: releases
+    overwrite: true
+    api_key:
+        secure: lN7Ub0c46tBBaLgo6WxxVZYbcmygNnWxv6bPrLJ1GOgm0cEwwJJfcyRbmjc46IrEiI8jeT7zuoywlKYl0ARdHT1LlXO/eiIGB4FgHBg6TFRVFsDv9BuNNpM8IPbgAqeZjUju0+s5AoG/kWfjV70QyKcima9VMxhCGNZLlzwGvjs=
+    file:
+        - ${DEPLOY_TARGET}.zip
+        - ${DEPLOY_TARGET}.tar.gz
+    skip_cleanup: true
+    on:
+        repo: jerrywoooooooo/redis-port
+        tags: true
+        condition: $TRAVIS_GO_VERSION =~ ^1\.(1[0-9]|[8-9])\.[0-9]+$
