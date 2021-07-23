@@ -1,1 +1,1 @@
-trigger travis ci
+trigger travis
