@@ -57,6 +57,8 @@ gotest-flags: build-deps
 
 jemalloc:
 	@cd third_party/jemalloc && \
+		chmod +x *.sh && chmod +x ./include/jemalloc/*.sh && \
+		chmod +x ./include/jemalloc/internal/*.sh && \		
 		./autogen.sh --with-jemalloc-prefix="je_" && make -j
 
 build-jemalloc:
