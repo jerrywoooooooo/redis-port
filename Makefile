@@ -10,6 +10,10 @@ GO_TEST  := go test
 ifeq ($(UNAME_S),Linux)
 GO_BUILD += -tags "use_jemalloc"
 GO_TEST  += -tags "use_jemalloc"
+yum install -y autoconf 
+yum install -y automake
+yum install -y libtool
+yum install -y bzip2
 build-deps: build-jemalloc
 endif
 
